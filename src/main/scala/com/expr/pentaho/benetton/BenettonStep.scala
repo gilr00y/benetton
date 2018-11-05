@@ -82,6 +82,7 @@ class BenettonStepMeta extends BaseStepMeta with StepMetaInterface {
     out
   }
    override def getXML:String = {
+     println("WRITING BENETTON TO XML")
      s"<settings>$getGroupFieldXML</settings>"
    }
    override def loadXML(node: org.w3c.dom.Node, databases: JList[DatabaseMeta], counters: JMap[String, Counter]): Unit = {
