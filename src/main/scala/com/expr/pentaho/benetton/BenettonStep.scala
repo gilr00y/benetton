@@ -1,19 +1,20 @@
 package com.expr.pentaho.benetton
 
-import java.util.{List => JUList}
+import java.util.{List => JList, Map => JMap}
 
-import org.pentaho.di.core.RowSet
+import javax.xml.xpath.XPathFactory
+import org.pentaho.di.core.database.DatabaseMeta
 import org.pentaho.di.core.row._
+import org.pentaho.di.core.{Counter, RowSet}
 import org.pentaho.di.trans._
 import org.pentaho.di.trans.step._
-
 
 
 class BenettonStep(smi: StepMeta, sdi: StepDataInterface, copyNr: Int, transMeta: TransMeta, trans: Trans) extends BaseStep(smi, sdi, copyNr, transMeta, trans) {
   override def safeModeChecking(row: RowMetaInterface): Unit = {
     logError("CHECKING SAFE MODE NOW... Kind of...")
   }
-  val rowSets: JUList[RowSet] = getInputRowSets
+  val rowSets: JList[RowSet] = getInputRowSets
   logError(rowSets.toString())
 
   def valOrNull(s: String) = if (s.isEmpty) null else s
@@ -38,33 +39,7 @@ class BenettonStep(smi: StepMeta, sdi: StepDataInterface, copyNr: Int, transMeta
       row.foreach(x => logError(Option(x).getOrElse("Null").toString))
     }
     val groupBys = Array("_id")
-//    while(true) {
-//
-//      if(first) {
-//        first = false
-//      } else {
-//        val nextRow = getRow
-//        if(nextRow != null) {
-//          var grp = true
-//
-//          // Check if all group-by conditions are met
-//          for (i <- groupBys.indices) {
-//            val gbIdx = rowMeta.indexOfValue(groupBys(i))
-//            grp &= rowMeta.getString(lastRow, gbIdx) == rowMeta.getString(nextRow, gbIdx)
-//          }
-//          if(grp) {
-//          } else {
-//            // Write lastRow
-//            putRow(rowMeta, lastRow)
-//            lastRow = nextRow
-//            //
-//          }
-//        } else {
-//          setOutputDone()
-//          return false
-//        }
-//      }
-//    }
+
     false
   }
   
@@ -75,11 +50,15 @@ class BenettonStep(smi: StepMeta, sdi: StepDataInterface, copyNr: Int, transMeta
 
 class BenettonStepMeta extends BaseStepMeta with StepMetaInterface {
   override def excludeFromRowLayoutVerification: Boolean = { true }//super.excludeFromRowLayoutVerification()
+  var groupFields: List[List[String]] = List(List("Hello", ">", "There"))
 
+  def getGroupFields: List[List[String]] = {
+    groupFields
+  }
   def getStep(smi: StepMeta, sdi: StepDataInterface, copyNr: Int, transMeta: TransMeta, trans: Trans) =
     new BenettonStep(smi, sdi, copyNr, transMeta, trans)
 
-  def getStepData() = new BenettonStepData
+  def getStepData = new BenettonStepData
 
   def setDefault(): Unit = {  }
 
@@ -93,22 +72,30 @@ class BenettonStepMeta extends BaseStepMeta with StepMetaInterface {
   //   inputRowMeta.addValueMeta(v)
   //   logBasic("outgoing valueMeta:" + inputRowMeta.toString())
   // }
+  private def getGroupFieldXML: String = {
+    var out: String = "<groupFields>"
+    groupFields.foreach(gfList => out += (s"<groupField>" +
+      s"<streamACol>${gfList.head}</streamACol>" +
+      s"<operator>${gfList(1)}</operator>" +
+      s"<streamBCol>${gfList(2)}</streamBCol></groupField>"))
+    out += "</groupFields>"
+    out
+  }
+   override def getXML:String = {
+     s"<settings>$getGroupFieldXML</settings>"
+   }
+   override def loadXML(node: org.w3c.dom.Node, databases: JList[DatabaseMeta], counters: JMap[String, Counter]): Unit = {
+     val xpath = XPathFactory.newInstance.newXPath
+     val gf = xpath.evaluate("//settings/groupFields", node)
+     println(s"Loading XML from ${gf.toString}")
+//
+//     token = xpath.evaluate("//settings/groupFields", node)
+//     projectId = xpath.evaluate("//settings/projectId", node)
+//     queue = xpath.evaluate("//settings/queue", node)
+//     outputField = xpath.evaluate("//settings/outputField", node)
 
-  // override def getXML() =
-  //   s"<settings><token>${token}</token><projectId>${projectId}</projectId><queue>${queue}</queue><outputField>${outputField}</outputField></settings>"
-
-  // override def loadXML(node: org.w3c.dom.Node, databases: JList[DatabaseMeta], counters: JMap[String, Counter]): Unit = {
-  //   println(s"Loading XML from $node")
-  //   import javax.xml.xpath._
-  //   val xpath = XPathFactory.newInstance.newXPath
-
-  //   token = xpath.evaluate("//settings/token", node)
-  //   projectId = xpath.evaluate("//settings/projectId", node)
-  //   queue = xpath.evaluate("//settings/queue", node)
-  //   outputField = xpath.evaluate("//settings/outputField", node)
-
-  //   println(s"Loaded params: token = $token, projectId = $projectId, queue = $queue, outputField = $outputField")
-  // }
+//     println(s"Loaded params: token = $token, projectId = $projectId, queue = $queue, outputField = $outputField")
+   }
 
   // override def readRep(rep: Repository, stepId: ObjectId, databases: JList[DatabaseMeta], counters: JMap[String, Counter]): Unit = {
   //   throw new UnsupportedOperationException("readRep")
