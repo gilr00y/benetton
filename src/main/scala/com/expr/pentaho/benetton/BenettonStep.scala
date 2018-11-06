@@ -15,7 +15,6 @@ class BenettonStep(smi: StepMeta, sdi: StepDataInterface, copyNr: Int, transMeta
     logError("CHECKING SAFE MODE NOW... Kind of...")
   }
   val rowSets: JList[RowSet] = getInputRowSets
-  logError(rowSets.toString())
 
   def valOrNull(s: String) = if (s.isEmpty) null else s
 
@@ -51,7 +50,16 @@ class BenettonStep(smi: StepMeta, sdi: StepDataInterface, copyNr: Int, transMeta
 class BenettonStepMeta extends BaseStepMeta with StepMetaInterface {
   override def excludeFromRowLayoutVerification: Boolean = { true }//super.excludeFromRowLayoutVerification()
   var groupFields: List[List[String]] = List(List("Hello", ">", "There"))
-
+  val rowNumIdx = 0
+  val streamAIdx = 1
+  val negationIdx = 2
+  val operatorIdx = 3
+  val streamBIdx = 4
+//  def getIncomingFields: Array[]
+//  val rowSets =
+//  val rmA: RowSet = rowSets(0)
+//  val rmB: RowSet = rowSets(1)
+//  rmA.getRowMeta
   def getGroupFields: List[List[String]] = {
     groupFields
   }
@@ -73,12 +81,15 @@ class BenettonStepMeta extends BaseStepMeta with StepMetaInterface {
   //   logBasic("outgoing valueMeta:" + inputRowMeta.toString())
   // }
   private def getGroupFieldXML: String = {
+    println("WRITING XML:")
     var out: String = "<groupFields>"
     groupFields.foreach(gfList => out += (s"<groupField>" +
-      s"<streamACol>${gfList.head}</streamACol>" +
-      s"<operator>${gfList(1)}</operator>" +
-      s"<streamBCol>${gfList(2)}</streamBCol></groupField>"))
+      s"<streamACol>${gfList(streamAIdx)}</streamACol>" +
+      s"<negation>${gfList(negationIdx)}</negation>" +
+      s"<operator>${gfList(operatorIdx)}</operator>" +
+      s"<streamBCol>${gfList(streamBIdx)}</streamBCol></groupField>"))
     out += "</groupFields>"
+    println(out)
     out
   }
    override def getXML:String = {

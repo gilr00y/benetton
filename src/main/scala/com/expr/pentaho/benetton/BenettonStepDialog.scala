@@ -8,9 +8,11 @@ import org.pentaho.di.core.Const
 import org.pentaho.di.core.exception.KettleException
 import org.pentaho.di.trans._
 import org.pentaho.di.trans.step._
-import org.pentaho.di.trans.steps.groupby.GroupByMeta
+import org.pentaho.di.ui.core.dialog.ErrorDialog
 import org.pentaho.di.ui.core.widget.{ColumnInfo, TableView}
 import org.pentaho.di.ui.trans.step._
+
+import scala.collection.mutable.ListBuffer
 
 
 class BenettonStepDialog(parent: Shell, m: Object, transMeta: TransMeta, stepName: String)
@@ -25,22 +27,7 @@ class BenettonStepDialog(parent: Shell, m: Object, transMeta: TransMeta, stepNam
   val middle = props.getMiddlePct
   val margin = Const.MARGIN
 
-
-
-//  def get(): Unit = {
-//    try {
-//      val r = transMeta.getPrevStepFields(stepname)
-//      if (r != null && !r.isEmpty) {
-//        BaseStepDialog.getFieldsFromPrevious(
-//          r, wGroup, 1, Array[Int](1),
-//          new Array[Int](1), -1, -1, null
-//        )
-//      }
-//    } catch {
-//      case ke: KettleException => new ErrorDialog(shell, "Kettle Error", ke.toString, ke)
-//      case e: Exception => new ErrorDialog(shell, "Generic Error", e.toString, e)
-//    }
-//  }
+  import org.pentaho.di.core.Const
 
   def open: String = {
     val parent = getParent
@@ -81,7 +68,7 @@ class BenettonStepDialog(parent: Shell, m: Object, transMeta: TransMeta, stepNam
     stepnameField.setLayoutData(stepnameFieldLayout)
 
     val groupLabel = new Label(shell, SWT.NONE)
-    groupLabel.setText("GroupBy Label")
+    groupLabel.setText("JOIN Conditions")
     props.setLook(groupLabel)
     val groupLabelLayout = new FormData
     groupLabelLayout.left = new FormAttachment(0, 0)
@@ -95,50 +82,26 @@ class BenettonStepDialog(parent: Shell, m: Object, transMeta: TransMeta, stepNam
     colArr(2) = new ColumnInfo("Operator", ColumnInfo.COLUMN_TYPE_CCOMBO, Array[String](""), false)
     colArr(3) = new ColumnInfo("Stream B Col", ColumnInfo.COLUMN_TYPE_CCOMBO, Array[String](""), false)
     val groupTbl = new TableView(transMeta, shell, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.V_SCROLL | SWT.H_SCROLL, colArr, numGroupRows, lsMod, props)
-    val getFieldBtn = new Button(shell, SWT.PUSH)
-    getFieldBtn.setText("Get Fields")
-    val getFieldBtnLayout = new FormData
-    getFieldBtnLayout.top = new FormAttachment(groupTbl, margin)
-    getFieldBtnLayout.right = new FormAttachment(100, 0)
-    getFieldBtn.setLayoutData(getFieldBtnLayout)
+    val getFieldBtnA = new Button(shell, SWT.PUSH)
+    val getFieldBtnB = new Button(shell, SWT.PUSH)
+    getFieldBtnA.setText("Get Stream A fields.")
+    getFieldBtnB.setText("Get Stream B fields.")
+    val getFieldBtnALayout = new FormData
+    val getFieldBtnBLayout = new FormData
+    getFieldBtnALayout.top = new FormAttachment(groupTbl, margin)
+    getFieldBtnBLayout.top = new FormAttachment(getFieldBtnA, margin)
+    getFieldBtnALayout.right = new FormAttachment(100, 0)
+    getFieldBtnBLayout.right = new FormAttachment(100, 0)
+    getFieldBtnA.setLayoutData(getFieldBtnALayout)
+    getFieldBtnB.setLayoutData(getFieldBtnBLayout)
     val groupTblLayout = new FormData
     groupTblLayout.left = new FormAttachment(0, 0)
     groupTblLayout.top = new FormAttachment(groupLabel, margin)
-    groupTblLayout.right = new FormAttachment(getFieldBtn, -margin)
+    groupTblLayout.right = new FormAttachment(getFieldBtnA, -margin)
+    groupTblLayout.right = new FormAttachment(getFieldBtnB, -margin)
     groupTblLayout.bottom = new FormAttachment(45, 0)
     groupTbl.setLayoutData(groupTblLayout)
-    // THE Aggregate fields
-    val wlAgg = new Label(shell, SWT.NONE)
-    wlAgg.setText("Aggregates:")
-    props.setLook(wlAgg)
-    val fdlAgg = new FormData
-    fdlAgg.left = new FormAttachment(0, 0)
-    fdlAgg.top = new FormAttachment(groupTbl, margin)
-    wlAgg.setLayoutData(fdlAgg)
-    val UpInsCols = 4
-    val UpInsRows = 1
-    val ciReturn = new Array[ColumnInfo](UpInsCols)
-    ciReturn(0) = new ColumnInfo("Name", ColumnInfo.COLUMN_TYPE_TEXT, false)
-    ciReturn(1) = new ColumnInfo("Subject", ColumnInfo.COLUMN_TYPE_CCOMBO, Array[String](""), false)
-    ciReturn(2) = new ColumnInfo("Type", ColumnInfo.COLUMN_TYPE_CCOMBO, GroupByMeta.typeGroupLongDesc)
-    ciReturn(3) = new ColumnInfo("Value", ColumnInfo.COLUMN_TYPE_TEXT, false)
-    ciReturn(3).setToolTip("Tooltip Here")
-    ciReturn(3).setUsingVariables(true)
-    val wAgg = new TableView(transMeta, shell, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.V_SCROLL | SWT.H_SCROLL, ciReturn, UpInsRows, lsMod, props)
-    wAgg.addModifyListener((modifyEvent: ModifyEvent) => {
-      def foo(modifyEvent: ModifyEvent):Unit = {
-//        setFlags
-        ourMeta.setChanged
-      }
 
-      foo(modifyEvent)
-    })
-    val wGetAgg = new Button(shell, SWT.PUSH)
-    wGetAgg.setText("Get Lookup Fields")
-    val fdGetAgg = new FormData
-    fdGetAgg.top = new FormAttachment(wlAgg, margin)
-    fdGetAgg.right = new FormAttachment(100, 0)
-    wGetAgg.setLayoutData(fdGetAgg)
     // Search the fields in the background
     val runnable = new Runnable() {
       override def run(): Unit = {
@@ -170,45 +133,91 @@ class BenettonStepDialog(parent: Shell, m: Object, transMeta: TransMeta, stepNam
     wCancel = new Button(shell, SWT.PUSH)
     wCancel.setText("Cancel")
     setButtonPositions(Array(wOK, wCancel), margin, null)
-    val fdAgg = new FormData
-    fdAgg.left = new FormAttachment(0, 0)
-    fdAgg.top = new FormAttachment(wlAgg, margin)
-    fdAgg.right = new FormAttachment(wGetAgg, -margin)
-    fdAgg.bottom = new FormAttachment(wOK, -margin)
-    wAgg.setLayoutData(fdAgg)
+
+    def ok(): Unit = {
+      val groupsize: Int = groupTbl.nrNonEmpty
+      var tmpGroupFields = new ListBuffer[scala.List[String]]
+      for(i <- 0 until groupsize) {
+        val item: Array[Object] = groupTbl.getRow(i).getData;
+
+        tmpGroupFields.+=(scala.List(
+          item(ourMeta.rowNumIdx).toString(),
+          item(ourMeta.streamAIdx).toString,
+          item(ourMeta.negationIdx).toString,
+          item(ourMeta.operatorIdx).toString,
+          item(ourMeta.streamBIdx).toString
+        ))
+      }
+      // Stamp ListBuffer to List, assign to BenettonStepMeta
+      ourMeta.groupFields = tmpGroupFields.toList
+      println(ourMeta.groupFields.toString)
+
+      stepname = stepnameField.getText
+      dispose()
+    }
     // Add listeners
-    val lsOK: Listener = new Listener() {
+    val lsOK = new Listener() {
       def handleEvent(e: Event): Unit = {
-        println("LSOK EVENT")
+        ok()
       }
     }
-    val lsGet: Listener = new Listener() {
+
+    def popInputFields(streamIdx: Int): Unit = {
+      try {
+        val prevSteps = transMeta.getPrevSteps(ourMeta.getParentStepMeta)
+        val prev0 = prevSteps(0).toString
+        val prev1 = prevSteps(1).toString
+        val stepFields0 = transMeta.getStepFields(prev0)
+        // TODO: Make stepfields1 accessible through dropdown in UI.
+        val stepFields1 = transMeta.getStepFields(prev1)
+
+        if (stepFields0 != null && !stepFields0.isEmpty) {
+          BaseStepDialog.getFieldsFromPrevious(
+            stepFields0, groupTbl, 1, Array[Int](1),
+            new Array[Int](1), -1, -1, null
+          )
+        }
+      } catch {
+        case ke: KettleException => new ErrorDialog(shell, "Kettle Error", ke.toString, ke)
+        case e: Exception => new ErrorDialog(shell, "Generic Error", e.toString, e)
+      }
+    }
+
+    val lsGetA = new Listener() {
       def handleEvent(e: Event): Unit = {
         println("LSGET EVENT")
+//        val rowSets: JList[RowSet] = transMeta.getPrevStepNames(ourMeta)
+//        val streamMeta = ourMeta.
+        popInputFields(0)
       }
     }
-    val lsGetAgg: Listener = new Listener() {
+
+    val lsGetB = new Listener() {
       def handleEvent(e: Event): Unit = {
-        println("LSGETAGG EVENT")
-//        getAgg
+        println("LSGET EVENT")
+        popInputFields(streamIdx=1)
       }
     }
-    val lsCancel: Listener = new Listener() {
+
+    val lsCancel = new Listener() {
       def handleEvent(e: Event): Unit = {
         println("LSCANCeL EVENT")
 //        cancel
       }
     }
     wOK.addListener(SWT.Selection, lsOK)
-    getFieldBtn.addListener(SWT.Selection, lsGet)
-    wGetAgg.addListener(SWT.Selection, lsGetAgg)
+    getFieldBtnA.addListener(SWT.Selection, lsGetA)
+    getFieldBtnB.addListener(SWT.Selection, lsGetB)
     wCancel.addListener(SWT.Selection, lsCancel)
     lsDef = new SelectionAdapter() {
       override def widgetDefaultSelected(e: SelectionEvent): Unit = {
-
 //        ok
       }
     }
+
+
+
+
     stepnameField.addSelectionListener(lsDef)
     // Detect X or ALT-F4 or something that kills this window...
     shell.addShellListener(new ShellAdapter() {
