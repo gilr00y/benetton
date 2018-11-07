@@ -150,7 +150,6 @@ class BenettonStepDialog(parent: Shell, m: Object, transMeta: TransMeta, stepNam
       }
       // Stamp ListBuffer to List, assign to BenettonStepMeta
       ourMeta.groupFields = tmpGroupFields.toList
-      println(ourMeta.groupFields.toString)
 
       stepname = stepnameField.getText
       dispose()
@@ -228,7 +227,17 @@ class BenettonStepDialog(parent: Shell, m: Object, transMeta: TransMeta, stepNam
     })
     // Set the shell size, based upon previous time...
     setSize()
-//    getData
+    // Sets table entries with XML-parsed values
+    def popData(): Unit = {
+      val groupFields = ourMeta.getGroupFields
+      for(rowIdx <- 0 until groupFields.length) {
+        val item: TableItem = groupTbl.table.getItem(rowIdx)
+        for(colIdx <- 0 until groupFields(rowIdx).length) {
+          item.setText(colIdx, groupFields(rowIdx)(colIdx))
+        }
+      }
+    }
+    popData()
     ourMeta.setChanged(backupChanged)
     shell.open()
     while ( {

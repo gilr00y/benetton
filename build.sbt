@@ -36,6 +36,10 @@ libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze-viz" % "0.13"
 )
 
+fork := true
+
+libraryDependencies ++= Seq("org.scala-lang.modules" %% "scala-xml" % "1.1.1")
+
 resolvers ++= Seq(
   // other resolvers here
   // if you want to use snapshot builds (currently 0.12-SNAPSHOT), use this.

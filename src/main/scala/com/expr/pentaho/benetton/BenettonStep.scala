@@ -2,13 +2,14 @@ package com.expr.pentaho.benetton
 
 import java.util.{List => JList, Map => JMap}
 
-import javax.xml.xpath.XPathFactory
 import org.pentaho.di.core.database.DatabaseMeta
 import org.pentaho.di.core.row._
 import org.pentaho.di.core.{Counter, RowSet}
 import org.pentaho.di.trans._
 import org.pentaho.di.trans.step._
 
+import scala.collection.mutable.ListBuffer
+import scala.xml.XML
 
 class BenettonStep(smi: StepMeta, sdi: StepDataInterface, copyNr: Int, transMeta: TransMeta, trans: Trans) extends BaseStep(smi, sdi, copyNr, transMeta, trans) {
   override def safeModeChecking(row: RowMetaInterface): Unit = {
@@ -70,16 +71,6 @@ class BenettonStepMeta extends BaseStepMeta with StepMetaInterface {
 
   def setDefault(): Unit = {  }
 
-  // override def check(remarks: JList[CheckResultInterface], meta: TransMeta, stepMeta: StepMeta, prev: RowMetaInterface, input: Array[String], output: Array[String], info: RowMetaInterface) = {
-  //   // TODO: Implement a check
-  // }
-
-  // override def getFields(inputRowMeta: RowMetaInterface, name: String, info: Array[RowMetaInterface], nextStep: StepMeta, space: VariableSpace): Unit = {
-  //   val v = valueMeta()
-  //   v.setOrigin(name)
-  //   inputRowMeta.addValueMeta(v)
-  //   logBasic("outgoing valueMeta:" + inputRowMeta.toString())
-  // }
   private def getGroupFieldXML: String = {
     println("WRITING XML:")
     var out: String = "<groupFields>"
@@ -96,17 +87,38 @@ class BenettonStepMeta extends BaseStepMeta with StepMetaInterface {
      println("WRITING BENETTON TO XML")
      s"<settings>$getGroupFieldXML</settings>"
    }
-   override def loadXML(node: org.w3c.dom.Node, databases: JList[DatabaseMeta], counters: JMap[String, Counter]): Unit = {
-     val xpath = XPathFactory.newInstance.newXPath
-     val gf = xpath.evaluate("//settings/groupFields", node)
-     println(s"Loading XML from ${gf.toString}")
-//
-//     token = xpath.evaluate("//settings/groupFields", node)
-//     projectId = xpath.evaluate("//settings/projectId", node)
-//     queue = xpath.evaluate("//settings/queue", node)
-//     outputField = xpath.evaluate("//settings/outputField", node)
 
-//     println(s"Loaded params: token = $token, projectId = $projectId, queue = $queue, outputField = $outputField")
+    import java.io.StringWriter
+    import javax.xml.transform.{OutputKeys, TransformerFactory}
+    import javax.xml.transform.dom.DOMSource
+    import javax.xml.transform.stream.StreamResult
+
+    private def nodeToString(node: org.w3c.dom.Node) = {
+      val tf = TransformerFactory.newInstance
+      val transformer = tf.newTransformer
+      transformer.setOutputProperty(OutputKeys.INDENT, "yes")
+      val writer = new StringWriter
+      transformer.transform(new DOMSource(node), new StreamResult(writer))
+      writer.toString
+    }
+   override def loadXML(node: org.w3c.dom.Node, databases: JList[DatabaseMeta], counters: JMap[String, Counter]): Unit = {
+     val n = XML.loadString(nodeToString(node))
+     val gfNodes = n \\ "groupField"
+
+     println(s"LOAD BENETTON XML: $gfNodes")
+     var tmpGroupFields = new ListBuffer[List[String]]
+     var i = 1
+     for(gfNode <- gfNodes) {
+        tmpGroupFields += scala.List(
+          i.toString,
+          (gfNode \ "streamACol").head.text,
+          (gfNode \ "negation").head.text,
+          (gfNode \ "operator").head.text,
+          (gfNode \ "streamBCol").head.text
+        )
+       i += 1
+     }
+     groupFields = tmpGroupFields.toList
    }
 
   // override def readRep(rep: Repository, stepId: ObjectId, databases: JList[DatabaseMeta], counters: JMap[String, Counter]): Unit = {
